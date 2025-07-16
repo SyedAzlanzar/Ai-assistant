@@ -9,3 +9,4 @@ langchain
 openai
 fpdf
 pydantic_settings
+python-multipart

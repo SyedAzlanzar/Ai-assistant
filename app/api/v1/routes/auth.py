@@ -7,9 +7,7 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", scheme_name="BearerAuth")
 class RegisterSchema(BaseModel):
     email: EmailStr
     name: str

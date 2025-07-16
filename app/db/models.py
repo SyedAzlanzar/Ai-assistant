@@ -1,5 +1,3 @@
-# app/db/models.py
-
 from typing import Any, Optional
 from bson import ObjectId
 from pydantic import BaseModel, Field
@@ -24,15 +22,6 @@ class PyObjectId(ObjectId):
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         return {'type': 'string'}
 
-# class User(BaseModel):
-#     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-#     email: str
-#     name: str
-#     hashed_password: str
-#     role: str
-
-#     model_config = {"populate_by_name": True}
-
 
 class User(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -53,3 +42,18 @@ class User(BaseModel):
     def _exclude_password(self, password: Any) -> None:
         # Returning None ensures it's not serialized
         return None
+    
+
+class UserOnboarding(BaseModel):
+    tech_stack: str = Field(..., description="Comma-separated list of user skills")
+    title: str = Field(..., description="Professional title")
+    resume_url: Optional[str] = Field(None, description="URL to the uploaded resume file")
+    user_id: PyObjectId = Field(..., alias="_id", description="ID of the user being onboarded")
+
+    model_config = {"populate_by_name": True}
+
+    # ✅ Serialize user_id (ObjectId -> str)
+    @field_serializer("user_id")
+    def serialize_user_id(self, user_id_val: ObjectId) -> str:
+        return str(user_id_val)
+    
