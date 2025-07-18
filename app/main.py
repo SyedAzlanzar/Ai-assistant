@@ -9,7 +9,6 @@ from app.api.v1.routes import auth, user, ai
 app = FastAPI(title="AI Assistant API")
 
 # Mount static files (resumes and fonts if needed)
-app.mount("/resumes", StaticFiles(directory="assets/resumes"), name="resumes")
 app.mount("/fonts", StaticFiles(directory="assets/fonts"), name="fonts")
 
 # Define OAuth2 scheme for protected routes

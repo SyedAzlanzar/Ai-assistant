@@ -1,12 +1,11 @@
-from typing import Any, Optional
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from typing import Any
 from bson import ObjectId
-from pydantic import BaseModel, Field
-from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
-from bson import ObjectId
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import GetCoreSchemaHandler
 
 
+# -------------------- PyObjectId --------------------
 class PyObjectId(ObjectId):
     @classmethod
     def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler):
@@ -23,37 +22,43 @@ class PyObjectId(ObjectId):
         return {'type': 'string'}
 
 
+# -------------------- User Model --------------------
 class User(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     email: str
-    name: str
+    first_name: str
+    last_name: str
+    country: str
+    city: str
+    phone_no: str
+    is_onboarded: bool = False
+    is_active: bool = False
     password: str
     role: str
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
 
-    # ✅ Serialize id (ObjectId -> str)
     @field_serializer("id")
     def serialize_id(self, id_val: ObjectId) -> str:
         return str(id_val)
 
-    # 📦 Exclude password from output
-    @field_serializer("password")
-    def _exclude_password(self, password: Any) -> None:
-        # Returning None ensures it's not serialized
-        return None
-    
+    def model_dump_public(self):
+        """Serialize user object and exclude password."""
+        return self.model_dump(exclude={"password"})
 
-class UserOnboarding(BaseModel):
-    tech_stack: str = Field(..., description="Comma-separated list of user skills")
-    title: str = Field(..., description="Professional title")
-    resume_url: Optional[str] = Field(None, description="URL to the uploaded resume file")
+
+# -------------------- OnboardingDetails Model --------------------
+class OnboardingDetails(BaseModel):
     user_id: PyObjectId = Field(..., alias="_id", description="ID of the user being onboarded")
+    tech_stack: str = Field(..., description="Comma-separated list of user skills")
+    job_title: str = Field(..., description="Professional title")
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
-    # ✅ Serialize user_id (ObjectId -> str)
     @field_serializer("user_id")
     def serialize_user_id(self, user_id_val: ObjectId) -> str:
         return str(user_id_val)
-    

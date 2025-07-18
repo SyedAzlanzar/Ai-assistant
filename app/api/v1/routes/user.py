@@ -1,53 +1,62 @@
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form, Depends
-import os
-import uuid
-import aiofiles
+from fastapi import APIRouter, HTTPException, status, Form, Depends
+from fastapi.responses import JSONResponse
 from app.db.mongodb import db
 from app.api.v1.routes.auth import get_current_user
 from app.db.models import User
 from pydantic import BaseModel
+from bson import ObjectId
 router = APIRouter()
 
+
 class OnboardingUserSchema(BaseModel):
-    tech_stack: str = Form(..., description="Comma-separated list of user skills")
-    title: str = Form(..., description="Professional title")
-    resume: UploadFile = File(..., description="Resume file in PDF or DOCX format")
-    # current_user: User = Depends(get_current_user)
-    
+    techStack: str = Form(...,
+                          description="Comma-separated list of user skills")
+    jobTitle: str = Form(..., description="Professional title")
+    currentUser: User = Depends(get_current_user)
+
 
 @router.post("/onboard")
 async def onboard_user(
-    tech_stack: str = Form(..., description="Comma-separated list of user skills"),
-    title: str = Form(..., description="Professional title"),
-    resume: UploadFile = File(..., description="Resume file in PDF or DOCX format"),
-    current_user: User = Depends(get_current_user)
+    techStack: str = Form(...,
+                          description="Comma-separated list of user skills"),
+    jobTitle: str = Form(..., description="Professional title"),
+    currentUser: User = Depends(get_current_user)
 ):
-    
+
     try:
-        os.makedirs("assets/resumes", exist_ok=True)
-        unique_filename = f"{current_user.email}_{uuid.uuid4().hex}_{resume.filename}"
-        file_path = os.path.join("assets/resumes", unique_filename)
-
-        # Save resume file
-        async with aiofiles.open(file_path, "wb") as f:
-            content = await resume.read()
-            await f.write(content)
-
-        resume_url = f"/resumes/{unique_filename}"
+        # find user by ID
+        user = await db.users.find_one({"_id": currentUser.id})
+        if not user:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"message": "User not found"}
+            )
+        # Check if user is already onboarded
+        if user.get("is_onboarded", True):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": "User is already onboarded."}
+            )
 
         # Store additional profile data in DB
+        await db.onboarding_details.insert_one({
+            "user_id": ObjectId(currentUser.id),
+            "tech_stack": techStack,
+            "job_title": jobTitle
+        })
+
+        # Update user onboarding status
         await db.users.update_one(
-            {"user_id": current_user.id},
-            {"$set": {
-                "tech_stack": tech_stack,
-                "title": title,
-                "resume_url": resume_url
-            }}
+            {"_id": currentUser.id},
+            {"$set": {"is_onboarded": True, "is_active": True}}
         )
+
+        user_data = await db.users.find_one({"_id": currentUser.id})
+        user = User(**user_data)
 
         return {
             "message": "Onboarding successful.",
-            "resume_url": resume_url
+            "user": user.model_dump_public()
         }
 
     except Exception as e:
