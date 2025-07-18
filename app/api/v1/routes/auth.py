@@ -7,12 +7,14 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", scheme_name="BearerAuth")
 class RegisterSchema(BaseModel):
     email: EmailStr
-    name: str
+    firstName: str
+    lastName: str
+    country: str
+    city: str
+    phoneNo: str
     password: str
     role: str
 
@@ -39,8 +41,14 @@ async def register(data: RegisterSchema):
         hashed = hash_password(data.password)
         await db.users.insert_one({
             "email": data.email,
-            "name": data.name,
+            "first_name": data.firstName,
+            "last_name": data.lastName,
+            "country": data.country,
+            "city": data.city,
+            "phone_no": data.phoneNo,
             "password": hashed,
+            "is_onboarded": False,
+            "is_active": False,
             "role": data.role
         })
 
@@ -107,3 +115,5 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during token validation."
         )
+
+
