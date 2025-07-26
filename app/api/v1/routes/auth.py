@@ -7,7 +7,10 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", scheme_name="BearerAuth")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login", scheme_name="BearerAuth")
+
+
 class RegisterSchema(BaseModel):
     email: EmailStr
     firstName: str
@@ -39,7 +42,7 @@ async def register(data: RegisterSchema):
 
         # Hash password and insert new user
         hashed = hash_password(data.password)
-        await db.users.insert_one({
+        newUser = await db.users.insert_one({
             "email": data.email,
             "first_name": data.firstName,
             "last_name": data.lastName,
@@ -52,7 +55,14 @@ async def register(data: RegisterSchema):
             "role": data.role
         })
 
-        return {"message": "User registered successfully"}
+        userDoc = await db.users.find_one({"email": data.email})
+        if not userDoc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        userResp = User(**userDoc)
+
+        return {"message": "User registered successfully", "userData": userResp}
 
     except HTTPException:
         # Re-raise known HTTP errors to be handled by FastAPI
@@ -79,9 +89,9 @@ async def login(data: LoginSchema):
             subject=user_doc["email"], role=user_doc["role"])
 
         # Sanitize user data
-        user_resp = User(**user_doc)
+        userResp = User(**user_doc)
 
-        return {"accessToken": token, "userData": user_resp}
+        return {"accessToken": token, "userData": userResp}
 
     except HTTPException:
         raise
@@ -115,5 +125,3 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during token validation."
         )
-
-

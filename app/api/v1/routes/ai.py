@@ -25,7 +25,7 @@ class PromptSchema(BaseModel):
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/chat")
-async def chat(data: PromptSchema):  # removed auth dependency
+@router.post("/cover-letter-generator")
+async def coverLetterGenerator(data: PromptSchema):  # removed auth dependency
     reply = run_ai(data.prompt,data.userSkills,data.tone,data.applicant,lng="en")  # Assuming 'lng' is a language parameter, defaulting to English
     return {"reply": reply}

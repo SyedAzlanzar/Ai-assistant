@@ -33,7 +33,7 @@ class User(BaseModel):
     phone_no: str
     is_onboarded: bool = False
     is_active: bool = False
-    password: str
+    # password: str
     role: str
 
     model_config = ConfigDict(
