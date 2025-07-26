@@ -1,3 +1,4 @@
+from fastapi import APIRouter
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
@@ -16,7 +17,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Create and include routers
 # Public router for register and login
-from fastapi import APIRouter
 
 public_router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 public_router.post("/register")(auth.register)
@@ -24,14 +24,22 @@ public_router.post("/login")(auth.login)
 app.include_router(public_router)
 
 # Protected router for onboard and chat
-protected_router = APIRouter(
+userRouter = APIRouter(
     prefix="/api/v1",
-    tags=["Protected"],
+    tags=["User"],
     dependencies=[Depends(oauth2_scheme)]
 )
-protected_router.post("/user/onboard")(user.onboard_user)
-protected_router.post("/ai/chat")(ai.chat)
-app.include_router(protected_router)
+userRouter.post("/user/onboard")(user.onboard_user)
+app.include_router(userRouter)
+
+AIRouter = APIRouter(
+    prefix="/api/v1",
+    tags=["Generative AI"],
+    dependencies=[Depends(oauth2_scheme)]
+)
+
+AIRouter.post("/ai/cover-letter-generator")(ai.coverLetterGenerator)
+app.include_router(AIRouter)
 
 # Customize OpenAPI to show proper security scheme
 def custom_openapi():
@@ -57,5 +65,6 @@ def custom_openapi():
                 op.pop("security", None)
     app.openapi_schema = schema
     return app.openapi_schema
+
 
 app.openapi = custom_openapi
